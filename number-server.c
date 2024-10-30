@@ -1,9 +1,11 @@
 #include "http-server.h"
 #include <string.h>
+#include <stdint.h>
 
 int num = 0;
 
 char const HTTP_404_NOT_FOUND[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n";
+char const HTTP_200_OK[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 
 void handle_404(int client_sock, char *path)  {
     printf("SERVER LOG: Got request for unrecognized path \"%s\"\n", path);
@@ -13,6 +15,8 @@ void handle_404(int client_sock, char *path)  {
     // snprintf includes a null-terminator
 
     // TODO: send response back to client?
+    write(client_sock, HTTP_404_NOT_FOUND, strlen(HTTP_404_NOT_FOUND));
+    write(client_sock, response_buff, strlen(response_buff));
 }
 
 
@@ -25,6 +29,37 @@ void handle_response(char *request, int client_sock) {
     if (sscanf(request, "GET %255s", path) != 1) {
         printf("Invalid request line\n");
         return;
+    }
+
+    if (strstr(path, "/shownum") != NULL) {
+	char response_buff[BUFFER_SIZE];
+	snprintf(response_buff, BUFFER_SIZE, "Your number is %d", num);
+	write(client_sock, HTTP_200_OK, strlen(HTTP_200_OK));
+    	write(client_sock, response_buff, strlen(response_buff));
+	return;
+    }
+
+    if(strstr(path, "/increment") != NULL) {
+    	num += 1;
+	char response_buff[BUFFER_SIZE];
+	snprintf(response_buff, BUFFER_SIZE, "Your new incremented number is %d", num);
+	write(client_sock, HTTP_200_OK, strlen(HTTP_200_OK));
+	write(client_sock, response_buff, strlen(response_buff));
+	return;
+    } 
+
+    char* argptr = strstr(path, "/add");
+    if(argptr != NULL) {
+	int32_t i;
+	int32_t * iptr = &i;
+	sscanf(argptr+11, "%d", iptr);
+	num += i;
+
+	char response_buff[BUFFER_SIZE];
+	snprintf(response_buff, BUFFER_SIZE, "Your new number sum is %d", num);
+	write(client_sock, HTTP_200_OK, strlen(HTTP_200_OK));
+	write(client_sock, response_buff, strlen(response_buff));
+	return;
     }
 
     handle_404(client_sock, path);
